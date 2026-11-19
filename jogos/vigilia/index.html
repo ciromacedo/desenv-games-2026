@@ -1,641 +1,94 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vigília, protótipo jogável</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500&family=Sora:wght@400;600&display=swap" rel="stylesheet">
-<style>
-/* Layout: palco 16:9 centralizado; HUD em HTML sobre um SVG de 4 camadas com parallax. Tema único (mundo escuro) por escolha. */
-:root{
-  color-scheme: dark;
-  --ink:#06050b;          /* fundo fora do palco */
-  --bone:#f4efe6;         /* porcelana, texto principal */
-  --moon:#9fb4e8;         /* luz fria do quarto */
-  --ember:#ffcf8a;        /* luz quente, esperança */
-  --wound:#c2263d;        /* perigo, o vilão */
-  --mist:#8d87a6;         /* texto secundário */
-  --f-display:"Cormorant Garamond", Georgia, "Times New Roman", serif;
-  --f-body:"Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0}
-body{background:var(--ink);color:var(--bone);font-family:var(--f-body);display:grid;place-items:center;overflow:hidden}
-#game{position:relative;width:min(100vw,calc(100vh*16/9));aspect-ratio:16/9;font-size:min(1.67vw,2.96vh);overflow:hidden;background:#000;user-select:none;-webkit-user-select:none;touch-action:none}
-#stage{position:absolute;inset:0;width:100%;height:100%;display:block}
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Vigília</title>
 
-/* ---------- paletas de cena (as cores do cenário mudam por variáveis) ---------- */
-#stage.room{--wall:#191624;--wall2:#120f1b;--floor:#0e0c14;--floor2:#09080e;--furn:#0b0a11;--accent:#3a1a2c;--blanket:#2a2438;--glass:#1b2440;--ov:.34}
-#stage.room.hope{--wall:#57506f;--wall2:#443e5a;--floor:#4a3a3c;--floor2:#3a2d30;--furn:#33293a;--accent:#a3566a;--blanket:#8a7ab0;--glass:#ffd9a0;--ov:0}
-#stage.dream{--wall:#f3d9b1;--wall2:#e6c08e;--floor:#b9794a;--floor2:#9c6238;--furn:#7a4a2e;--accent:#c9483b;--plant:#5d8a4e;--sky1:#ffe2a8;--sky2:#ff9e7a;--sun:#fff3c4;--hill:#d9826a;--fore:#3d2a22;--ov:0}
-#stage.dream.nightmare{--wall:#2a1420;--wall2:#1c0c16;--floor:#190b11;--floor2:#0e0609;--furn:#0d0508;--accent:#5a0f1c;--plant:#1c1a14;--sky1:#4a0716;--sky2:#0a0206;--sun:#c2263d;--hill:#12060a;--fore:#050305;--ov:.12}
-#stage.dream.dawn{--wall:#fff6e0;--wall2:#f3e3bd;--floor:#e2c69a;--floor2:#cfae7e;--furn:#b99263;--accent:#e58a7a;--plant:#7fb26a;--sky1:#cfeaff;--sky2:#fff2c9;--sun:#ffffff;--hill:#a9cfa0;--fore:#8a6a4a;--ov:0}
-#stage [class^="c-"],#stage [class*=" c-"]{transition:fill 1.8s ease,stop-color 1.8s ease,transform 2.4s ease}
-.c-wall{fill:var(--wall)}.c-wall2{fill:var(--wall2)}.c-floor{fill:var(--floor)}.c-floor2{fill:var(--floor2)}
-.c-furn{fill:var(--furn)}.c-accent{fill:var(--accent)}.c-blanket{fill:var(--blanket)}.c-glass{fill:var(--glass)}
-.c-plant{fill:var(--plant)}.c-sun{fill:var(--sun)}.c-hill{fill:var(--hill)}.c-fore{fill:var(--fore)}
-.c-sky1{stop-color:var(--sky1)}.c-sky2{stop-color:var(--sky2)}
-#ov{fill:#04030a;opacity:var(--ov);transition:opacity 1.8s ease;pointer-events:none}
-.hp-only,.nm-only,.beam,.wisps,.sleep,.sit{transition:opacity 1.6s ease}
-.nm-only{opacity:0}.nightmare .nm-only{opacity:1}.nightmare .hp-only{opacity:0}
-.beam{opacity:0}.hope .beam{opacity:.24}
-.hope .wisps{opacity:0}
-.sit{opacity:0}.hope .sit{opacity:1}.hope .sleep{opacity:0}
-.curtain{transform-box:fill-box;transition:transform 2.4s ease}
-.curtain.l{transform-origin:left center}.curtain.r{transform-origin:right center}
-.hope .curtain{transform:scaleX(.28)}
-.frame{transform-box:fill-box;transform-origin:50% 0;transition:transform 1.4s cubic-bezier(.5,1.8,.5,1)}
-.nightmare .frame{transform:rotate(var(--r,8deg))}
-.wilt{transform-box:fill-box;transform-origin:50% 100%;transition:transform 2s ease}
-.nightmare .wilt{transform:rotate(38deg) scaleY(.8)}
-.flame{transform-box:fill-box;transform-origin:50% 100%;animation:flick .5s infinite alternate;transition:fill 1.5s}
-.nightmare .flame{fill:#6fa8ff}
-@keyframes flick{to{transform:scale(.85,1.15)}}
-.screen{animation:scr 3.3s infinite steps(1)}
-@keyframes scr{0%,100%{opacity:.9}47%{opacity:.75}50%{opacity:.95}81%{opacity:.6}84%{opacity:.9}}
-.pulse{animation:pulse 1.6s infinite}
-@keyframes pulse{0%,100%{opacity:.15}50%{opacity:1}}
-.wisp{animation:wisp 7s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}
-.wisp:nth-child(2){animation-duration:9s;animation-delay:-3s}.wisp:nth-child(3){animation-duration:6s;animation-delay:-1s}.wisp:nth-child(4){animation-duration:11s;animation-delay:-5s}
-@keyframes wisp{from{transform:translate(-18px,6px) scale(1)}to{transform:translate(22px,-14px) scale(1.25)}}
-.glitch{animation:glitch 2.2s infinite steps(1)}
-@keyframes glitch{0%,100%{transform:translate(0,0);opacity:1}8%{transform:translate(3px,-1px)}10%{transform:translate(-2px,1px);opacity:.6}12%{transform:translate(0,0);opacity:1}55%{transform:translate(-3px,0)}57%{transform:translate(2px,2px);opacity:.75}59%{transform:translate(0,0);opacity:1}}
-.halo{animation:pulse 2.4s infinite}
-.sway{animation:sway 3.6s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:50% 100%}
-@keyframes sway{from{transform:rotate(-1.2deg)}to{transform:rotate(1.2deg)}}
-.clockhand{transform-box:fill-box;transform-origin:50% 100%;animation:back 6s linear infinite}
-@keyframes back{to{transform:rotate(-360deg)}}
-.nightmare .clockhand{animation-duration:.7s}
-.threads{stroke-dasharray:4 5;animation:dash 1.2s linear infinite}
-@keyframes dash{to{stroke-dashoffset:-18}}
-#bossEl{transition:opacity 1.6s ease}
-.word{font-family:var(--f-display);font-style:italic;font-weight:700;font-size:28px;fill:var(--bone);stroke:var(--wound);stroke-width:.8;paint-order:stroke}
+        <!-- Fontes de pixel. Sem internet, o navegador usa "monospace". -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap" rel="stylesheet">
 
-/* ---------- HUD ---------- */
-.hud{position:absolute;pointer-events:none}
-#hudL{left:1.4em;top:1.1em;display:flex;flex-direction:column;gap:.55em}
-#lives{display:flex;gap:.28em}
-#lives i{width:.72em;height:.72em;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:var(--bone);box-shadow:0 0 .5em rgba(244,239,230,.5)}
-#lives i.off{background:transparent;outline:1px solid rgba(244,239,230,.3);box-shadow:none}
-.meter{display:flex;align-items:center;gap:.6em;font-size:.72em;letter-spacing:.14em;text-transform:uppercase;color:var(--mist)}
-.bar{width:9em;height:.42em;background:rgba(255,255,255,.1);border-radius:1em;overflow:hidden}
-.bar b{display:block;height:100%;width:0;background:var(--ember);transition:width 1.6s ease;box-shadow:0 0 .8em var(--ember)}
-#goal{right:1.4em;top:1.1em;max-width:19em;text-align:right;font-size:.78em;line-height:1.45;color:var(--bone);text-shadow:0 1px 6px #000}
-#goal small{display:block;color:var(--mist);letter-spacing:.14em;text-transform:uppercase;font-size:.82em;margin-bottom:.2em}
-#bossHud{left:50%;top:1.1em;transform:translateX(-50%);width:22em;text-align:center;opacity:0;transition:opacity .8s}
-#bossHud.on{opacity:1}
-#bossHud span{font-family:var(--f-display);font-style:italic;font-size:1.25em;color:var(--bone);text-shadow:0 0 .6em var(--wound)}
-#bossHud .bar{width:100%;height:.5em;margin-top:.3em;background:rgba(0,0,0,.6);outline:1px solid rgba(194,38,61,.5)}
-#bossHud .bar b{width:100%;background:var(--wound);box-shadow:none;transition:width .25s}
-#sub{left:50%;bottom:2.2em;transform:translateX(-50%);width:min(40em,86%);text-align:center;font-family:var(--f-display);font-size:1.5em;line-height:1.25;text-wrap:balance;text-shadow:0 2px 10px #000,0 0 2px #000;opacity:0;transition:opacity .5s}
-#sub.on{opacity:1}
-#sub em{display:block;font-family:var(--f-body);font-style:normal;font-size:.48em;letter-spacing:.2em;text-transform:uppercase;color:var(--mist);margin-bottom:.3em}
-#sub.evil{color:#ffb3bd}
-#fade{position:absolute;inset:0;background:#000;opacity:0;transition:opacity .9s ease;pointer-events:none;display:grid;place-items:center;font-family:var(--f-display);font-style:italic;font-size:1.7em;text-align:center;padding:2em;color:var(--bone)}
-#hurt{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 9em 2em var(--wound);opacity:0;transition:opacity .4s}
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
 
-/* ---------- telas ---------- */
-.panel{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:1.1em;padding:0 7%;background:linear-gradient(90deg,rgba(6,5,11,.94) 0%,rgba(6,5,11,.78) 48%,rgba(6,5,11,.15) 100%)}
-.panel[hidden]{display:none}
-.panel h1{font-family:var(--f-display);font-weight:700;font-size:5em;line-height:.95;margin:0;letter-spacing:.01em}
-.panel h1 small{display:block;font-family:var(--f-body);font-weight:400;font-size:.16em;letter-spacing:.32em;text-transform:uppercase;color:var(--mist);margin-bottom:1em}
-.panel p{max-width:30em;margin:0;font-size:.95em;line-height:1.6;color:#cfc9de}
-.keys{display:grid;grid-template-columns:auto 1fr;gap:.45em 1em;max-width:26em;font-size:.82em;color:#cfc9de;align-items:center}
-kbd{font-family:var(--f-body);font-size:.9em;border:1px solid rgba(244,239,230,.35);border-bottom-width:2px;border-radius:.35em;padding:.12em .5em;color:var(--bone);white-space:nowrap}
-.btn{align-self:flex-start;font:600 1em var(--f-body);color:var(--ink);background:var(--bone);border:0;border-radius:2em;padding:.75em 1.7em;cursor:pointer;letter-spacing:.04em}
-.btn:hover{background:var(--ember)}
-.btn:focus-visible{outline:3px solid var(--moon);outline-offset:3px}
-.panel ul{margin:0;padding-left:1.1em;max-width:32em;font-size:.86em;line-height:1.6;color:#cfc9de}
+        <div id="jogo">
+            <!-- A cena é desenhada aqui em 320x180 e ampliada pelo CSS (pixel art). -->
+            <canvas id="tela" aria-label="Cena do jogo"></canvas>
 
-/* ---------- toque ---------- */
-#touch{position:absolute;inset:auto 0 0 0;display:none;justify-content:space-between;padding:1em 1.4em;pointer-events:none}
-#touch div{display:flex;gap:.7em}
-#touch button{pointer-events:auto;width:3.6em;height:3.6em;border-radius:50%;border:1px solid rgba(244,239,230,.4);background:rgba(10,8,18,.55);color:var(--bone);font:600 1.1em var(--f-body);touch-action:none}
-@media (pointer:coarse){#touch{display:flex}#sub{bottom:5.6em}}
-@media (prefers-reduced-motion:reduce){.glitch,.wisp,.sway,.screen{animation:none}}
-</style>
-</head>
-<body>
-<div id="game">
-  <svg id="stage" class="room" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid slice" aria-label="Cena do jogo">
-    <defs>
-      <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="c-sky2"/><stop offset="1" class="c-sky1"/></linearGradient>
-      <radialGradient id="vig" cx=".5" cy=".5" r=".75"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".85"/></radialGradient>
-      <radialGradient id="glowW" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffe9b8" stop-opacity=".9"/><stop offset="1" stop-color="#ffe9b8" stop-opacity="0"/></radialGradient>
-      <radialGradient id="glowB" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#8fb0ff" stop-opacity=".55"/><stop offset="1" stop-color="#8fb0ff" stop-opacity="0"/></radialGradient>
-      <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
-    </defs>
-    <g id="L1"></g><g id="L2"></g><g id="L3"></g><g id="L4"></g>
-    <rect id="ov" width="960" height="540"/>
-    <rect width="960" height="540" fill="url(#vig)" pointer-events="none"/>
-  </svg>
+            <!-- HUD em HTML, por cima do canvas -->
+            <div class="hud" id="hud-status">
+                <div id="vidas" aria-label="Vidas do gato"></div>
+                <div class="medidor">Luz <span class="barra"><b id="luz"></b></span></div>
+            </div>
+            <div class="hud" id="hud-chefe">
+                <span>A Máscara</span>
+                <div class="barra"><b id="vida-chefe"></b></div>
+            </div>
+            <div class="hud" id="objetivo"></div>
+            <div class="hud" id="legenda"></div>
+            <div id="dano"></div>
+            <div id="transicao"></div>
 
-  <div class="hud" id="hudL">
-    <div id="lives" aria-label="Vidas do gato"></div>
-    <div class="meter">Luz <span class="bar"><b id="luz"></b></span></div>
-  </div>
-  <div class="hud" id="bossHud"><span>A Máscara</span><div class="bar"><b id="bossBar"></b></div></div>
-  <div class="hud" id="goal"></div>
-  <div class="hud" id="sub"></div>
-  <div id="hurt"></div>
-  <div id="fade"></div>
+            <!-- Controles de toque (só aparecem em telas de toque) -->
+            <div id="toque">
+                <div class="direcional">
+                    <button data-tecla="arrowup" aria-label="Cima">▲</button>
+                    <button data-tecla="arrowleft" aria-label="Esquerda">◀</button>
+                    <button data-tecla="arrowdown" aria-label="Baixo">▼</button>
+                    <button data-tecla="arrowright" aria-label="Direita">▶</button>
+                </div>
+                <div class="acoes">
+                    <button data-tecla="e" aria-label="Interagir">E</button>
+                    <button data-acao="atacar" aria-label="Atacar">✦</button>
+                </div>
+            </div>
 
-  <div id="touch">
-    <div><button data-k="arrowleft" aria-label="Esquerda">◀</button><button data-k="arrowright" aria-label="Direita">▶</button></div>
-    <div><button data-k="e" aria-label="Interagir">E</button><button data-k="j" aria-label="Atacar">✦</button><button data-k="arrowup" aria-label="Pular">▲</button></div>
-  </div>
+            <div class="painel" id="painel-titulo">
+                <a class="voltar" href="../../">&larr; Voltar ao portal</a>
+                <h1><small>Protótipo · Memória 1</small>Vigília</h1>
+                <p>Ela não sai do quarto há semanas. Você é o gato dela, e é o único que vê o que a atormenta enquanto ela dorme. Entre no sonho, ache o que não pertence àquela lembrança e use isso contra ele.</p>
+                <div class="teclas">
+                    <span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou setas</span><span>andar</span>
+                    <span><kbd>E</kbd></span><span>interagir, pegar objeto</span>
+                    <span><kbd>Botão esquerdo do mouse</kbd></span><span>atacar na direção do cursor</span>
+                </div>
+                <button class="botao" id="botao-comecar">Começar a vigília</button>
+            </div>
 
-  <div class="panel" id="title">
-    <h1><small>Protótipo · Memória 1</small>Vigília</h1>
-    <p>Ela não sai do quarto há semanas. Você é o gato dela, e é o único que vê o que a atormenta enquanto ela dorme. Entre no sonho, ache o que não pertence àquela lembrança e use isso contra ele.</p>
-    <div class="keys">
-      <span><kbd>A</kbd> <kbd>D</kbd> ou <kbd>←</kbd> <kbd>→</kbd></span><span>andar</span>
-      <span><kbd>W</kbd> <kbd>↑</kbd> ou <kbd>Espaço</kbd></span><span>pular</span>
-      <span><kbd>E</kbd></span><span>interagir, pegar objeto</span>
-      <span><kbd>J</kbd> ou <kbd>X</kbd></span><span>atacar</span>
-    </div>
-    <button class="btn" id="startBtn">Começar a vigília</button>
-  </div>
+            <div class="painel" id="painel-fim" hidden>
+                <h1><small>Fim do protótipo</small>A cortina abriu</h1>
+                <p>Primeira memória desfeita. A luz do quarto subiu para 20%. O ciclo completo do jogo repete este laço, com um sonho novo e um objeto fora de contexto diferente a cada memória.</p>
+                <ul>
+                    <li>Quarto: fica mais claro e arrumado a cada memória vencida.</li>
+                    <li>Sonho: começa perfeito, e o primeiro golpe revela o que ele era.</li>
+                    <li>Arma: sempre o objeto que destoa do cenário.</li>
+                </ul>
+                <button class="botao" id="botao-de-novo">Jogar de novo</button>
+            </div>
+        </div>
 
-  <div class="panel" id="end" hidden>
-    <h1><small>Fim do protótipo</small>A cortina abriu</h1>
-    <p>Primeira memória desfeita. A luz do quarto subiu para 20%. O ciclo completo do jogo repete este laço, com um sonho novo e um objeto fora de contexto diferente a cada memória.</p>
-    <ul>
-      <li>Quarto: fica mais claro e arrumado a cada memória vencida.</li>
-      <li>Sonho: começa perfeito, e o primeiro golpe revela o que ele era.</li>
-      <li>Arma: sempre o objeto que destoa do cenário.</li>
-    </ul>
-    <button class="btn" id="againBtn">Jogar de novo</button>
-  </div>
-</div>
-
-<script>
-(()=>{
-"use strict";
-const $=s=>document.querySelector(s);
-const NS="http://www.w3.org/2000/svg";
-const W=960,GY=440;
-const stage=$("#stage"),L=[$("#L1"),$("#L2"),$("#L3"),$("#L4")];
-const reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
-const rnd=(a,b)=>a+Math.random()*(b-a);
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-
-/* ================= estado ================= */
-const S={mode:"title",phase:"",cam:0,worldW:1300,f:[0,.7,1,1.3],shake:0,frozen:true,hope:false,seen:{},timers:[]};
-const cat={x:150,y:GY,vy:0,face:1,ground:true,lives:9,inv:0,atk:0,cd:0,weapon:false,kb:0,walk:0,moving:false};
-const boss={x:1740,hp:10,max:10,state:"stalk",t:1.5,dir:1,inv:0,kb:0,active:false,casts:0};
-const EX_X=1740,GIRL_X=1850,VASE_X=620,BED_X=1000;
-let words=[],parts=[],R={};
-const later=(fn,ms)=>{const id=setTimeout(fn,ms);S.timers.push(id);return id};
-const clearTimers=()=>{S.timers.forEach(clearTimeout);S.timers=[]};
-
-/* ================= entrada ================= */
-const keys={},pressed={};
-addEventListener("keydown",e=>{const k=e.key.toLowerCase();
-  if([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(k))e.preventDefault();
-  if(!keys[k])pressed[k]=true;keys[k]=true});
-addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false});
-addEventListener("blur",()=>{for(const k in keys)keys[k]=false});
-document.querySelectorAll("#touch button").forEach(b=>{const k=b.dataset.k;
-  b.addEventListener("pointerdown",e=>{e.preventDefault();if(!keys[k])pressed[k]=true;keys[k]=true});
-  ["pointerup","pointercancel","pointerleave"].forEach(ev=>b.addEventListener(ev,()=>{keys[k]=false}))});
-const any=(o,...ks)=>ks.some(k=>o[k]);
-
-/* ================= HUD ================= */
-function say(who,text,ms=4600,evil=false){const el=$("#sub");
-  el.innerHTML=(who?`<em>${who}</em>`:"")+text;el.classList.toggle("evil",evil);el.classList.add("on");
-  clearTimeout(say.t);say.t=setTimeout(()=>el.classList.remove("on"),ms)}
-function once(id,fn){if(!S.seen[id]){S.seen[id]=1;fn()}}
-function goal(t){$("#goal").innerHTML=t?`<small>Objetivo</small>${t}`:""}
-function drawLives(){$("#lives").innerHTML=Array.from({length:9},(_,i)=>`<i class="${i<cat.lives?"":"off"}"></i>`).join("")}
-function fade(color,text,hold,mid){const f=$("#fade");f.style.background=color;f.style.color=color==="#fff"?"#2a2030":"";f.textContent=text||"";f.style.opacity=1;
-  later(()=>{mid&&mid();later(()=>{f.style.opacity=0},hold)},950)}
-
-/* ================= personagens (SVG) ================= */
-const catSVG=`<g id="cat"><g id="catFlip"><g id="catBob">
-  <path id="tail" d="M-26,-26 C-48,-30 -54,-56 -40,-70" stroke="#07070c" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <path d="M-26,-26 C-48,-30 -54,-56 -40,-70" stroke="#4a4a6a" stroke-width="1" fill="none" opacity=".6"/>
-  <rect class="leg" x="-24" y="-16" width="7" height="16" rx="3" fill="#07070c"/><rect class="leg" x="-14" y="-16" width="7" height="16" rx="3" fill="#0d0d15"/>
-  <rect class="leg" x="10" y="-16" width="7" height="16" rx="3" fill="#0d0d15"/><rect class="leg" x="19" y="-16" width="7" height="16" rx="3" fill="#07070c"/>
-  <ellipse cx="0" cy="-25" rx="31" ry="14" fill="#07070c" stroke="#4a4a6a" stroke-width="1.2"/>
-  <polygon points="15,-46 19,-62 27,-49" fill="#07070c" stroke="#4a4a6a" stroke-width="1"/><polygon points="28,-49 36,-62 39,-45" fill="#07070c" stroke="#4a4a6a" stroke-width="1"/>
-  <circle cx="27" cy="-37" r="14" fill="#07070c" stroke="#4a4a6a" stroke-width="1.2"/>
-  <ellipse cx="26" cy="-38" rx="3" ry="4" fill="#ffd84a"/><ellipse cx="36" cy="-38" rx="3" ry="4" fill="#ffd84a"/>
-  <rect x="25.3" y="-41.5" width="1.4" height="7" fill="#07070c"/><rect x="35.3" y="-41.5" width="1.4" height="7" fill="#07070c"/>
-  <polygon id="shard" points="39,-30 66,-40 60,-30 46,-23" fill="#f6f1e7" stroke="#9fb4e8" stroke-width="1" display="none"/>
-  <path id="slash" d="M34,-78 Q118,-40 40,4 Q92,-38 34,-78Z" fill="#f6f1e7" opacity=".9" display="none"/>
-</g></g></g>
-<g id="prompt" display="none"><rect x="-17" y="-17" width="34" height="34" rx="8" fill="#06050b" stroke="#f4efe6" stroke-width="1.5"/><text y="7" text-anchor="middle" font-family="Sora,sans-serif" font-weight="600" font-size="18" fill="#f4efe6">E</text></g>
-<g id="fx"></g>`;
-
-const exSVG=`<g id="exN" transform="translate(${EX_X},${GY})"><g class="sway">
-  <rect x="-13" y="-82" width="11" height="82" fill="#27344f"/><rect x="2" y="-82" width="11" height="82" fill="#27344f"/>
-  <rect x="-21" y="-152" width="42" height="76" rx="9" fill="#f3efe8"/>
-  <path d="M16,-140 Q40,-124 50,-108" stroke="#f3efe8" stroke-width="10" fill="none" stroke-linecap="round"/>
-  <path d="M52,-108 L60,-78" stroke="#4d7a45" stroke-width="3"/>
-  <circle cx="50" cy="-116" r="8" fill="#c9483b"/><circle cx="60" cy="-110" r="7" fill="#e0685a"/><circle cx="54" cy="-104" r="6" fill="#c9483b"/>
-  <circle cx="0" cy="-170" r="18" fill="#e3b28c"/>
-  <path d="M-18,-174 Q-16,-195 4,-192 Q21,-189 18,-172 Q6,-183 -18,-174Z" fill="#2a1d17"/>
-  <circle cx="8" cy="-171" r="1.8" fill="#2a1d17"/><path d="M3,-162 Q9,-156 15,-163" stroke="#2a1d17" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-</g></g>`;
-
-const girlSVG=`<g transform="translate(${GIRL_X},${GY})">
-  <g class="hp-only"><g class="sway">
-    <rect x="-9" y="-60" width="7" height="60" fill="#e3b28c"/><rect x="3" y="-60" width="7" height="60" fill="#e3b28c"/>
-    <path d="M-16,-142 Q0,-150 16,-142 L30,-52 Q0,-42 -30,-52Z" fill="#f2c94c"/>
-    <path d="M-22,-176 Q-26,-120 -18,-100 L18,-100 Q26,-120 22,-176Z" fill="#5a3320"/>
-    <circle cx="0" cy="-160" r="16" fill="#e9bd9a"/>
-    <path d="M-17,-164 Q-10,-182 6,-178 Q18,-174 17,-160 Q4,-172 -17,-164Z" fill="#5a3320"/>
-    <circle cx="-7" cy="-160" r="1.6" fill="#2a1d17"/><path d="M-12,-152 Q-7,-148 -2,-152" stroke="#2a1d17" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-  </g></g>
-  <g class="nm-only">
-    <g class="threads" stroke="#c2263d" stroke-width="1.2" fill="none" opacity=".8"><path d="M-14,-70 L-60,-440"/><path d="M0,-78 L4,-440"/><path d="M14,-70 L70,-440"/><path d="M-24,-40 L-130,-440"/><path d="M24,-40 L140,-440"/></g>
-    <path d="M-30,0 Q-34,-44 -10,-58 Q14,-64 28,-40 Q34,-18 30,0Z" fill="#8a7430"/>
-    <path d="M-20,-86 Q-30,-40 -24,-10 L10,-30 Q20,-60 14,-86Z" fill="#2e1a12"/>
-    <circle cx="-2" cy="-70" r="15" fill="#b99680"/>
-    <path d="M-18,-74 Q-8,-92 10,-84 Q16,-76 13,-66 Q0,-80 -18,-74Z" fill="#2e1a12"/>
-  </g>
-</g>`;
-
-const bossSVG=`<g id="bossEl" display="none"><g id="bossIn">
-  <ellipse cx="0" cy="-4" rx="70" ry="10" fill="#000" opacity=".5"/>
-  <g id="bArms" stroke="#050305" stroke-width="11" fill="none" stroke-linecap="round">
-    <path d="M-34,-196 Q-78,-150 -84,-70 M-84,-70 l-10,22 M-84,-70 l0,26 M-84,-70 l10,22"/>
-    <path d="M34,-196 Q78,-150 84,-70 M84,-70 l-10,22 M84,-70 l0,26 M84,-70 l10,22"/>
-  </g>
-  <path d="M-52,0 L-38,-150 Q-42,-236 0,-246 Q42,-236 38,-150 L52,0 L34,-16 L17,0 L0,-16 L-17,0 L-34,-16Z" fill="#050305" stroke="#5a0f1c" stroke-width="1.5"/>
-  <ellipse cx="0" cy="-206" rx="23" ry="29" fill="#f4efe6"/>
-  <polygon points="6,-236 24,-222 22,-200 10,-214" fill="#050305"/>
-  <ellipse cx="-9" cy="-212" rx="6" ry="4" fill="#050305" transform="rotate(18 -9 -212)"/><ellipse cx="9" cy="-212" rx="6" ry="4" fill="#050305" transform="rotate(-18 9 -212)"/>
-  <circle class="beye" cx="-9" cy="-212" r="1.8" fill="#fff"/><circle class="beye" cx="9" cy="-212" r="1.8" fill="#fff"/>
-  <path d="M-14,-194 Q0,-180 14,-194" stroke="#050305" stroke-width="2.4" fill="none" stroke-linecap="round"/>
-  <g stroke="#050305" stroke-width="1.6" fill="none">
-    <path class="crack" d="M-20,-220 L-8,-204 L-14,-190" display="none"/><path class="crack" d="M0,-234 L-4,-216 L4,-202" display="none"/>
-    <path class="crack" d="M18,-196 L6,-188 L10,-178" display="none"/><path class="crack" d="M-22,-200 L-2,-196 L-8,-180 M4,-202 L20,-208" display="none"/>
-  </g>
-</g></g>`;
-
-/* ================= cenários ================= */
-function buildRoom(hope){
-  S.mode="room";S.phase="";S.hope=hope;S.worldW=1300;S.f=[0,.7,1,1.3];
-  stage.setAttribute("class","room");
-  L[0].innerHTML="";
-  /* parede (parallax 0.7) */
-  let photos="";for(let i=0;i<7;i++){if(i===2||i===3||i===5)continue;photos+=`<rect x="${150+i*38}" y="${150+Math.sin(i)*8}" width="24" height="30" fill="#2b2740" stroke="#3a3550" transform="rotate(${(i%3-1)*5} ${162+i*38} 165)"/>`}
-  L[1].innerHTML=`
-    <rect class="c-wall" width="1260" height="440"/>
-    <rect class="c-wall2" y="395" width="1260" height="45"/>
-    <path d="M140,146 Q280,176 420,150" stroke="#2f2a44" stroke-width="1.5" fill="none"/>${photos}
-    <rect class="c-glass" x="520" y="110" width="200" height="220"/>
-    <path d="M620,110V330M520,220H720" stroke="#0a0911" stroke-width="5"/>
-    <rect x="514" y="104" width="212" height="232" fill="none" stroke="#0a0911" stroke-width="8"/>
-    <rect class="curtain l c-accent" x="506" y="96" width="112" height="262"/>
-    <rect class="curtain r c-accent" x="622" y="96" width="112" height="262"/>
-    <rect x="496" y="90" width="248" height="7" rx="3" fill="#07060c"/>
-    <polygon class="beam" points="540,110 700,110 880,440 420,440" fill="#ffd9a0"/>
-    <rect x="860" y="232" width="190" height="7" class="c-furn"/>
-    <rect x="872" y="196" width="12" height="36" fill="#2a2440"/><rect x="886" y="204" width="10" height="28" fill="#3a1a2c"/><rect x="900" y="212" width="40" height="11" fill="#22203a" transform="rotate(-14 920 218)"/>
-    <rect x="980" y="150" width="62" height="80" fill="#201c30" stroke="#2f2a44" transform="rotate(9 980 150)"/>
-    <rect x="300" y="230" width="70" height="92" fill="#1e1a2c" stroke="#2f2a44" transform="rotate(-3 335 276)"/>`;
-  /* chão, móveis, cama (parallax 1) */
-  let boards="";for(let x=0;x<1300;x+=130)boards+=`<rect class="c-floor2" x="${x}" y="440" width="2" height="100"/>`;
-  L[2].innerHTML=`
-    <rect class="c-floor" y="440" width="1300" height="100"/>${boards}
-    <rect class="c-floor2" y="440" width="1300" height="4"/>
-    <ellipse class="c-accent" cx="640" cy="486" rx="230" ry="26" opacity=".5"/>
-    <!-- escrivaninha -->
-    <ellipse cx="300" cy="290" rx="130" ry="90" fill="url(#glowB)" class="screen"/>
-    <rect class="c-furn" x="180" y="338" width="250" height="11"/><rect class="c-furn" x="190" y="349" width="9" height="91"/><rect class="c-furn" x="411" y="349" width="9" height="91"/>
-    <rect x="252" y="262" width="96" height="62" rx="3" fill="#0a0911"/><rect class="screen" x="257" y="267" width="86" height="52" fill="#7f9be0"/>
-    <rect x="294" y="324" width="12" height="14" fill="#0a0911"/>
-    <rect x="368" y="322" width="14" height="16" rx="2" fill="#3a3550"/><rect x="388" y="326" width="13" height="12" rx="2" fill="#2f2a44"/><ellipse cx="216" cy="336" rx="18" ry="4" fill="#3a3550"/><ellipse cx="216" cy="332" rx="16" ry="3.5" fill="#2f2a44"/>
-    <!-- bagunça -->
-    <path class="c-blanket" d="M450,440 Q470,410 500,422 Q520,400 548,426 Q560,434 566,440Z" opacity=".8"/>
-    <rect x="552" y="426" width="60" height="9" fill="#3b3144" transform="rotate(-4 582 430)"/>
-    <rect x="630" y="431" width="13" height="17" fill="#cfc9de" opacity=".7" transform="rotate(-24 636 439)"/><rect x="652" y="433" width="13" height="17" fill="#cfc9de" opacity=".7" transform="rotate(31 658 441)"/>
-    <rect x="752" y="434" width="24" height="5" rx="2" fill="#0a0911"/><circle class="pulse" cx="771" cy="436" r="2" fill="#9fb4e8"/>
-    <path d="M700,440 Q716,418 742,430 Q752,436 756,440Z" fill="#241f33"/>
-    <rect x="96" y="408" width="50" height="32" fill="#17131f" stroke="#2f2a44"/><rect x="104" y="384" width="40" height="24" fill="#1b1726" stroke="#2f2a44" transform="rotate(-6 124 396)"/>
-    <!-- cama -->
-    <rect class="c-furn" x="1216" y="296" width="22" height="144"/><rect class="c-furn" x="850" y="398" width="380" height="26"/><rect class="c-furn" x="856" y="424" width="10" height="16"/><rect class="c-furn" x="1210" y="424" width="10" height="16"/>
-    <rect x="850" y="372" width="370" height="28" rx="6" fill="#3a3550"/>
-    <rect x="1128" y="350" width="80" height="26" rx="10" fill="#57506f"/>
-    <path class="c-blanket" d="M850,400 L850,384 Q880,372 1120,374 L1120,400Z"/>
-    <g class="sleep">
-      <path class="c-blanket" d="M872,378 Q930,330 1010,338 Q1090,322 1140,362 L1140,380 L872,382Z"/>
-      <path d="M1128,364 Q1150,338 1180,352 Q1196,362 1188,372 Q1160,378 1128,372Z" fill="#2e1a12"/>
-    </g>
-    <g class="sit" transform="translate(960,372)">
-      <rect x="-12" y="0" width="9" height="62" fill="#b99680"/><rect x="3" y="0" width="9" height="62" fill="#b99680"/>
-      <path d="M-20,-78 Q0,-86 20,-78 L24,8 L-24,8Z" fill="#6f6a8f"/>
-      <path d="M-20,-112 Q-26,-64 -18,-40 L18,-40 Q26,-64 20,-112Z" fill="#5a3320"/>
-      <circle cx="0" cy="-98" r="16" fill="#e9bd9a"/><path d="M-17,-102 Q-10,-120 6,-116 Q18,-112 17,-98 Q4,-110 -17,-102Z" fill="#5a3320"/>
-      <circle cx="-7" cy="-98" r="1.6" fill="#2a1d17"/><path d="M-12,-90 Q-7,-88 -2,-90" stroke="#2a1d17" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-    </g>
-    <g class="wisps" filter="url(#blur)">
-      <ellipse class="wisp" cx="960" cy="300" rx="70" ry="30" fill="#3a0a22" opacity=".85"/><ellipse class="wisp" cx="1060" cy="270" rx="90" ry="34" fill="#1a0616" opacity=".9"/>
-      <ellipse class="wisp" cx="1120" cy="310" rx="60" ry="26" fill="#5a0f1c" opacity=".55"/><ellipse class="wisp" cx="1010" cy="240" rx="50" ry="22" fill="#12040e" opacity=".9"/>
-    </g>
-    ${catSVG}`;
-  /* primeiro plano (parallax 1.3) */
-  L[3].innerHTML=`<g fill="#030208">
-    <rect x="70" y="150" width="8" height="390"/><path d="M40,150 L108,150 L96,96 L52,96Z"/>
-    <path d="M520,540 Q540,470 600,480 Q640,440 690,492 Q716,510 720,540Z"/>
-    <path d="M1180,540 L1180,420 Q1184,400 1204,400 L1300,400 Q1318,400 1320,420 L1320,540Z"/><path d="M1190,404 Q1230,360 1296,402Z"/>
-    <rect x="1480" y="430" width="90" height="110"/></g>`;
-  grabRefs();
-  cat.x=hope?640:150;cat.y=GY;cat.vy=0;cat.weapon=false;cat.face=1;S.cam=clamp(cat.x-W/2,0,S.worldW-W);
-  $("#bossHud").classList.remove("on");
-  if(hope){later(()=>stage.classList.add("hope"),700);$("#luz").style.width="20%";goal("Vá até ela.");
-    later(()=>say("","O quarto respira. Uma fresta de manhã entra pela cortina."),1500)}
-  else{$("#luz").style.width="0%";goal("Suba na cama e entre no sonho dela.")}
-}
-
-function buildDream(){
-  S.mode="dream";S.phase="memory";S.worldW=2400;S.f=[.15,.55,1,1.35];
-  stage.setAttribute("class","dream");
-  /* céu (0.15) */
-  L[0].innerHTML=`<rect width="1200" height="440" fill="url(#skyG)"/>
-    <circle class="c-sun" cx="620" cy="250" r="64"/><ellipse class="nm-only" cx="620" cy="250" rx="12" ry="44" fill="#050305"/>
-    <path class="c-hill" d="M0,440 L0,360 Q150,300 300,350 Q470,290 640,346 Q820,300 980,352 Q1100,320 1200,350 L1200,440Z"/>`;
-  /* parede com janelas vazadas (0.55) */
-  const wins=[0,1,2,3].map(i=>[150+i*400,90,200,240]);
-  let d="M0,0H1800V440H0Z";wins.forEach(([x,y,w,h])=>{d+=`M${x},${y}V${y+h}H${x+w}V${y}Z`});
-  let deco="";
-  wins.forEach(([x,y,w,h])=>{deco+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#fff8ea" stroke-width="7"/><path d="M${x+w/2},${y}V${y+h}M${x},${y+h/2}H${x+w}" stroke="#fff8ea" stroke-width="4"/>
-    <path class="c-accent" d="M${x-22},${y-16} H${x+26} Q${x+20},${y+h/2} ${x-14},${y+h+18} H${x-22}Z"/><path class="c-accent" d="M${x+w+22},${y-16} H${x+w-26} Q${x+w-20},${y+h/2} ${x+w+14},${y+h+18} H${x+w+22}Z"/>`});
-  [0,1,2,3].forEach(i=>{const x=405+i*400,r=[-11,7,-6,13][i];
-    deco+=`<g class="frame" style="--r:${r}deg"><rect class="c-furn" x="${x}" y="150" width="90" height="110"/><rect x="${x+8}" y="158" width="74" height="94" fill="#fff8ea"/>
-      <g class="hp-only"><circle cx="${x+34}" cy="${x%3?196:198}" r="10" fill="#5a3320"/><circle cx="${x+56}" cy="192" r="11" fill="#2a1d17"/><path d="M${x+18},252 Q${x+34},206 ${x+46},252Z" fill="#f2c94c"/><path d="M${x+44},252 Q${x+58},204 ${x+74},252Z" fill="#27344f"/></g>
-      <g class="nm-only"><rect x="${x+8}" y="158" width="74" height="94" fill="#12060a"/><path d="M${x+14},166 L${x+76},246 M${x+70},164 L${x+20},240 M${x+12},206 L${x+78},212" stroke="#c2263d" stroke-width="2.5"/></g></g>
-      <circle cx="${x+45}" cy="110" r="46" fill="url(#glowW)" class="hp-only"/><rect class="c-furn" x="${x+39}" y="104" width="12" height="16" rx="3"/>`});
-  deco+=`<g transform="translate(96,180)"><circle r="30" fill="#fff8ea" stroke="#7a4a2e" stroke-width="5"/><path d="M0,0V-20" stroke="#2a1d17" stroke-width="3" stroke-linecap="round" class="clockhand"/><path d="M0,0H12" stroke="#2a1d17" stroke-width="3" stroke-linecap="round"/></g>`;
-  L[1].innerHTML=`<path class="c-wall" fill-rule="evenodd" d="${d}"/><rect class="c-wall2" y="356" width="1800" height="84"/><rect y="352" width="1800" height="5" fill="#fff8ea" opacity=".5"/>${deco}`;
-  /* piso, mobília, casal (1.0) */
-  let boards="";for(let x=0;x<2400;x+=120)boards+=`<rect class="c-floor2" x="${x}" y="440" width="2" height="100"/>`;
-  L[2].innerHTML=`
-    <rect class="c-floor" y="440" width="2400" height="100"/>${boards}<rect class="c-floor2" y="440" width="2400" height="4"/>
-    <ellipse class="c-accent" cx="1040" cy="488" rx="300" ry="28" opacity=".55"/>
-    <!-- pedestal impecável com o objeto que destoa -->
-    <rect class="c-furn" x="${VASE_X-22}" y="362" width="44" height="78"/><rect class="c-furn" x="${VASE_X-30}" y="356" width="60" height="8" rx="2"/><rect class="c-furn" x="${VASE_X-30}" y="432" width="60" height="8"/>
-    <g id="vase" transform="translate(${VASE_X},356)">
-      <circle class="halo" r="46" cy="-28" fill="url(#glowB)"/>
-      <g class="glitch">
-        <path d="M-14,0 C-27,-14 -25,-34 -12,-44 L-8,-58 L-3,-49 L2,-63 L7,-48 L12,-56 C25,-34 27,-14 14,0Z" fill="#f6f1e7" stroke="#9fb4e8" stroke-width="1.2"/>
-        <path d="M-19,-22 Q0,-13 19,-22" stroke="#4a6fb0" stroke-width="2" fill="none"/><path d="M-3,-49 L-6,-30 L2,-18" stroke="#8d87a6" stroke-width="1" fill="none"/>
-        <polygon points="22,-1 36,-8 31,0" fill="#f6f1e7"/><polygon points="-33,0 -24,-8 -20,0" fill="#f6f1e7"/><polygon points="-6,-70 2,-78 6,-68" fill="#f6f1e7"/>
-      </g>
-    </g>
-    <!-- sofá -->
-    <rect class="c-accent" x="880" y="352" width="280" height="62" rx="16"/><rect class="c-accent" x="866" y="384" width="308" height="44" rx="12"/><rect class="c-furn" x="884" y="428" width="10" height="12"/><rect class="c-furn" x="1146" y="428" width="10" height="12"/>
-    <rect x="930" y="368" width="54" height="34" rx="8" fill="#fff8ea" opacity=".85" class="hp-only"/>
-    <!-- mesa posta -->
-    <path d="M1290,372 H1570 L1560,404 H1300Z" fill="#fff8ea"/><rect class="c-furn" x="1308" y="404" width="10" height="36"/><rect class="c-furn" x="1542" y="404" width="10" height="36"/>
-    <rect x="1340" y="336" width="5" height="36" fill="#fff8ea"/><ellipse class="flame" cx="1342.5" cy="328" rx="4" ry="9" fill="#ffb347"/>
-    <rect x="1516" y="336" width="5" height="36" fill="#fff8ea"/><ellipse class="flame" cx="1518.5" cy="328" rx="4" ry="9" fill="#ffb347"/>
-    <ellipse cx="1342" cy="330" rx="46" ry="46" fill="url(#glowW)" class="hp-only"/><ellipse cx="1518" cy="330" rx="46" ry="46" fill="url(#glowW)" class="hp-only"/>
-    <path d="M1418,372 L1422,346 H1440 L1444,372Z" fill="#9fb4e8"/>
-    <g class="wilt"><path d="M1431,346 V310" stroke="#4d7a45" stroke-width="3"/><circle class="c-accent" cx="1431" cy="304" r="10"/><circle class="c-accent" cx="1420" cy="312" r="8"/><circle class="c-accent" cx="1443" cy="313" r="8"/></g>
-    ${girlSVG}${exSVG}${bossSVG}
-    <g id="wordsG"></g>
-    ${catSVG}`;
-  /* primeiro plano (1.35) */
-  let fore="";[240,1180,2080,2900].forEach((x,i)=>{fore+=`<g transform="translate(${x},540)"><path class="c-fore" d="M-34,0 L-26,-70 H26 L34,0Z"/>
-    <g class="c-plant"><path d="M0,-70 Q-70,-150 -96,-${220+i*8} Q-40,-170 0,-70Z"/><path d="M0,-70 Q10,-190 -14,-270 Q44,-190 0,-70Z"/><path d="M0,-70 Q70,-140 110,-${200+i*10} Q52,-176 0,-70Z"/><path d="M0,-70 Q-30,-120 -60,-124 Q-22,-104 0,-70Z"/></g></g>`});
-  L[3].innerHTML=fore+`<path class="c-fore" d="M0,0 H70 Q60,220 0,360Z" opacity=".9"/>`;
-  grabRefs();
-  cat.x=120;cat.y=GY;cat.vy=0;cat.weapon=false;cat.face=1;cat.lives=9;drawLives();S.cam=0;
-  boss.active=false;boss.hp=boss.max;words=[];
-  goal("Explore a lembrança. Algo aqui não pertence a ela.");
-  later(()=>say("","Uma tarde dourada. Tudo no lugar. Tudo perfeito demais."),900);
-}
-
-function grabRefs(){
-  R={cat:$("#cat"),flip:$("#catFlip"),bob:$("#catBob"),tail:$("#tail"),legs:[...document.querySelectorAll("#cat .leg")],shard:$("#shard"),slash:$("#slash"),
-     prompt:$("#prompt"),fx:$("#fx"),vase:$("#vase"),exN:$("#exN"),boss:$("#bossEl"),bossIn:$("#bossIn"),eyes:[...document.querySelectorAll(".beye")],
-     cracks:[...document.querySelectorAll(".crack")],wordsG:$("#wordsG")};
-  parts=[];
-}
-
-/* ================= partículas ================= */
-function burst(x,y,n,color,spd=260){
-  if(!R.fx)return;
-  for(let i=0;i<n&&parts.length<90;i++){const el=document.createElementNS(NS,"polygon");const s=rnd(3,8);
-    el.setAttribute("points",`0,${-s} ${s*.7},${s*.5} ${-s*.6},${s*.4}`);el.setAttribute("fill",color);R.fx.appendChild(el);
-    const a=rnd(0,Math.PI*2),v=rnd(spd*.3,spd);parts.push({el,x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-120,r:rnd(0,360),vr:rnd(-500,500),life:rnd(.5,1.1)})}
-}
-function updParts(dt){
-  for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=dt;p.vy+=700*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.r+=p.vr*dt;
-    if(p.life<=0||p.y>GY+60){p.el.remove();parts.splice(i,1);continue}
-    p.el.setAttribute("transform",`translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) rotate(${p.r|0})`);p.el.setAttribute("opacity",Math.min(1,p.life*2).toFixed(2))}
-}
-
-/* ================= fluxo ================= */
-function enterDream(){S.frozen=true;goal("");say("","Você fecha os olhos junto dela.",2400);
-  fade("#000","",700,()=>{buildDream();S.frozen=false})}
-
-function startTransform(){
-  S.phase="transform";S.frozen=true;S.shake=22;goal("");
-  burst(EX_X,GY-150,22,"#f6f1e7",380);
-  $("#hurt").style.opacity=.9;later(()=>$("#hurt").style.opacity=0,500);
-  stage.classList.add("nightmare");
-  R.exN.setAttribute("display","none");
-  boss.x=EX_X;boss.hp=boss.max;boss.state="stalk";boss.t=1.6;boss.kb=0;boss.inv=0;boss.casts=0;
-  R.boss.removeAttribute("display");R.boss.style.opacity=1;R.cracks.forEach(c=>c.setAttribute("display","none"));
-  cat.kb=-420;cat.vy=-300;cat.ground=false;
-  say("Ele","VOCÊ NÃO É NADA SEM MIM.",3200,true);
-  later(()=>{S.shake=10},500);
-  later(()=>{S.phase="fight";S.frozen=false;boss.active=true;$("#bossHud").classList.add("on");$("#bossBar").style.width="100%";
-    goal("Quebre a máscara. Ataque quando ele se cansar depois da investida.")},2600);
-}
-
-function hitBoss(){
-  boss.hp--;boss.inv=.45;boss.kb=cat.face*240;S.shake=9;
-  burst(boss.x,GY-200,10,"#f4efe6");
-  $("#bossBar").style.width=(boss.hp/boss.max*100)+"%";
-  const shown=Math.floor((boss.max-boss.hp)/2.4);R.cracks.forEach((c,i)=>{if(i<shown)c.removeAttribute("display")});
-  if(boss.hp===7)say("Ele","Sem mim você não é ninguém.",3000,true);
-  if(boss.hp===4)say("Ele","Você vai voltar. Você sempre volta.",3000,true);
-  if(boss.hp<=0)win();
-}
-
-function hurtCat(dir){
-  if(cat.inv>0||S.phase!=="fight")return;
-  cat.lives--;cat.inv=1.3;cat.kb=dir*520;cat.vy=-380;cat.ground=false;S.shake=11;drawLives();
-  $("#hurt").style.opacity=.8;later(()=>$("#hurt").style.opacity=0,350);
-  if(cat.lives<=0)defeat();
-}
-
-function clearWords(){words.forEach(w=>w.el.remove());words=[]}
-
-function defeat(){
-  S.frozen=true;boss.active=false;
-  fade("#000","O pesadelo expulsou você. Gatos têm nove vidas.",1700,()=>{
-    clearWords();cat.lives=9;drawLives();cat.x=1250;cat.y=GY;cat.vy=0;cat.kb=0;cat.inv=1;
-    boss.hp=boss.max;boss.x=1900;boss.state="stalk";boss.t=1.8;boss.kb=0;$("#bossBar").style.width="100%";
-    R.cracks.forEach(c=>c.setAttribute("display","none"));
-    later(()=>{S.frozen=false;boss.active=true},1700)});
-}
-
-function win(){
-  S.phase="win";S.frozen=true;boss.active=false;clearWords();S.shake=20;goal("");
-  for(let i=0;i<5;i++)later(()=>burst(boss.x+rnd(-30,30),GY-rnd(40,230),14,i%2?"#f4efe6":"#12060a",420),i*180);
-  R.boss.style.opacity=0;$("#bossHud").classList.remove("on");
-  later(()=>{stage.classList.remove("nightmare");stage.classList.add("dawn")},900);
-  later(()=>say("Ela","Não era amor. Era medo.",3600),2200);
-  later(()=>fade("#fff","",900,()=>{buildRoom(true);S.frozen=false}),5600);
-}
-
-function ending(){
-  S.frozen=true;goal("");
-  burst(cat.x,cat.y-60,8,"#ffcf8a",160);
-  say("Ela","Você ficou comigo o tempo todo, não ficou?",3800);
-  later(()=>{$("#end").hidden=false;S.mode="end";$("#againBtn").focus()},4200);
-}
-
-/* ================= ataque ================= */
-function attack(){
-  cat.atk=.18;cat.cd=.42;
-  if(S.mode!=="dream")return;
-  if(S.phase==="memory"){
-    const dx=EX_X-cat.x;
-    if(dx*cat.face>0&&Math.abs(dx)<130){
-      if(cat.weapon)startTransform();
-      else say("","Suas garras atravessam a lembrança como fumaça. Procure algo que não pertence a este lugar.",4200)}
-  }else if(S.phase==="fight"){
-    for(let i=words.length-1;i>=0;i--){const w=words[i],dx=w.x-cat.x;
-      if(dx*cat.face>-20&&Math.abs(dx)<135&&Math.abs(w.y-(cat.y-30))<70){burst(w.x,w.y-10,6,"#c2263d",180);w.el.remove();words.splice(i,1)}}
-    const dx=boss.x-cat.x;
-    if(dx*cat.face>0&&Math.abs(dx)<135&&boss.inv<=0)hitBoss();
-  }
-}
-
-/* ================= chefe ================= */
-const WORDS=["culpa","sozinha","exagerada","ninguém","sua culpa","fica","ingrata"];
-function spawnWord(dir){
-  if(S.phase!=="fight"||!R.wordsG)return;
-  const el=document.createElementNS(NS,"text");const text=WORDS[Math.random()*WORDS.length|0];
-  el.textContent=text;el.setAttribute("class","word");el.setAttribute("text-anchor","middle");R.wordsG.appendChild(el);
-  words.push({el,text,x:boss.x+dir*50,y:Math.random()<.7?430:374,vx:dir*rnd(240,310),hw:text.length*7});
-}
-function setB(s,t){boss.state=s;boss.t=t}
-function updBoss(dt){
-  boss.t-=dt;boss.inv-=dt;boss.x+=boss.kb*dt;boss.kb*=Math.pow(.01,dt);
-  const dx=cat.x-boss.x,ad=Math.abs(dx),sgn=dx<0?-1:1,rage=boss.hp<=5;
-  switch(boss.state){
-    case "stalk":boss.x+=sgn*(rage?115:78)*dt;
-      if(boss.t<=0){if(rage&&boss.casts<1&&Math.random()<.65){boss.casts++;setB("cast",.7)}else{boss.casts=0;boss.dir=sgn;setB("windup",rage?.5:.7)}}break;
-    case "cast":if(boss.t<=0){spawnWord(sgn);if(boss.hp<=3)later(()=>spawnWord(cat.x<boss.x?-1:1),420);setB("stalk",rnd(.9,1.5))}break;
-    case "windup":if(boss.t<=0)setB("lunge",.48);break;
-    case "lunge":boss.x+=boss.dir*590*dt;if(boss.t<=0)setB("recover",1.05);break;
-    case "recover":if(boss.t<=0)setB("stalk",rnd(1.1,2));break;
-  }
-  boss.x=clamp(boss.x,960,2300);
-  if(boss.state!=="recover"&&ad<(boss.state==="lunge"?72:50)&&cat.y>GY-190)hurtCat(sgn);
-  /* palavras */
-  for(let i=words.length-1;i>=0;i--){const w=words[i];w.x+=w.vx*dt;
-    if(w.x<S.cam-200||w.x>S.cam+W+200){w.el.remove();words.splice(i,1);continue}
-    w.el.setAttribute("x",w.x.toFixed(1));w.el.setAttribute("y",w.y);
-    if(Math.abs(w.x-cat.x)<w.hw+20&&w.y-22<cat.y&&w.y>cat.y-46){hurtCat(w.vx<0?-1:1);if(cat.inv>1.2){w.el.remove();words.splice(i,1)}}}
-}
-function drawBoss(t){
-  if(S.mode!=="dream"||!R.boss||R.boss.getAttribute("display")==="none")return;
-  let lean=0,sy=1+Math.sin(t*2.4)*.015,sx=1;
-  if(boss.state==="windup"){lean=-boss.dir*12;sy=.94}
-  else if(boss.state==="lunge"){lean=boss.dir*20;sx=1.08}
-  else if(boss.state==="recover"){sy=.86;lean=boss.dir*6}
-  else if(boss.state==="cast"){sy=1.06}
-  R.boss.setAttribute("transform",`translate(${boss.x.toFixed(1)},${GY})`);
-  R.bossIn.setAttribute("transform",`rotate(${lean}) scale(${sx},${sy})`);
-  R.bossIn.setAttribute("opacity",boss.inv>0&&((t*30|0)%2)?.35:1);
-  const hot=boss.state==="windup"||boss.state==="lunge"||boss.state==="cast";
-  R.eyes.forEach(e=>{e.setAttribute("fill",hot?"#ff2a4a":"#fff");e.setAttribute("r",hot?3:1.8)});
-}
-
-/* ================= laço ================= */
-let last=0;
-function frame(ms){
-  const t=ms/1000,dt=Math.min(.033,t-last||0);last=t;
-  if(S.mode==="room"||S.mode==="dream"){update(dt,t);render(t)}
-  for(const k in pressed)delete pressed[k];
-  requestAnimationFrame(frame);
-}
-function update(dt,t){
-  /* gato */
-  let dir=0;
-  if(!S.frozen){
-    dir=(any(keys,"d","arrowright")?1:0)-(any(keys,"a","arrowleft")?1:0);
-    if(dir)cat.face=dir;
-    if(any(pressed,"w","arrowup"," ")&&cat.ground){cat.vy=-640;cat.ground=false}
-    if(any(pressed,"j","x","k")&&cat.cd<=0)attack();
-  }
-  cat.moving=dir!==0&&cat.ground;if(cat.moving)cat.walk+=dt*14;
-  cat.vy+=1700*dt;cat.x+=(dir*250+cat.kb)*dt;cat.kb*=Math.pow(.004,dt);cat.y+=cat.vy*dt;
-  if(cat.y>=GY){cat.y=GY;cat.vy=0;cat.ground=true}
-  const lo=S.phase==="fight"?900:40,hi=S.phase==="fight"?2340:S.worldW-40;
-  cat.x=clamp(cat.x,lo,hi);
-  cat.inv-=dt;cat.atk-=dt;cat.cd-=dt;
-
-  /* interações */
-  let prompt=null;const E=!S.frozen&&any(pressed,"e","enter");
-  if(S.mode==="room"){
-    if(Math.abs(cat.x-BED_X)<140){prompt=[BED_X,300];if(E){S.hope?ending():enterDream()}}
-    if(!S.hope){
-      if(Math.abs(cat.x-300)<60)once("desk",()=>say("","A tela ainda acesa. Ninguém olha para ela há dias."));
-      if(Math.abs(cat.x-648)<40)once("photo",()=>say("","Uma foto rasgada ao meio. Uma das metades sumiu."));
-      if(Math.abs(cat.x-765)<35)once("phone",()=>say("","37 mensagens não lidas. Ela não responde ninguém."));
-      if(cat.x>860)once("bed",()=>say("","Algo pesa sobre o sono dela. Você consegue ver. Ela não."));
-    }
-  }else if(S.phase==="memory"){
-    if(!cat.weapon&&Math.abs(cat.x-VASE_X)<75){prompt=[VASE_X,250];
-      once("vaseSee",()=>say("","Um vaso de porcelana quebrado, numa sala onde nada está fora do lugar."));
-      if(E){cat.weapon=true;R.vase.setAttribute("display","none");burst(VASE_X,330,12,"#f6f1e7",200);
-        say("","O caco não pertence a esta memória. Ele corta o que é falso.");goal("Leve o caco até ele e ataque.")}}
-    if(cat.x>330)once("l1",()=>say("Ele","Lembra desse dia? Você estava tão feliz."));
-    if(cat.x>1000)once("l2",()=>say("Ela","Eu... estava?"));
-    if(cat.x>1380)once("l3",()=>say("Ele","Você não precisa de mais ninguém. Só de mim."));
-    if(cat.x>1620&&!cat.weapon)once("l4",()=>say("Ele","Que gato insistente. Tira ele daqui, amor."));
-  }
-  if(boss.active)updBoss(dt);
-  updParts(dt);
-
-  /* prompt */
-  if(prompt&&!S.frozen){R.prompt.removeAttribute("display");R.prompt.setAttribute("transform",`translate(${prompt[0]},${prompt[1]+Math.sin(t*4)*4})`)}
-  else R.prompt.setAttribute("display","none");
-
-  /* câmera */
-  const target=clamp(cat.x-W/2+cat.face*70,0,S.worldW-W);
-  S.cam+=(target-S.cam)*Math.min(1,dt*4.5);
-  S.shake=Math.max(0,S.shake-dt*26);
-}
-function render(t){
-  const sh=reduce?0:S.shake,sx=(Math.random()-.5)*sh,sy=(Math.random()-.5)*sh;
-  for(let i=0;i<4;i++)L[i].setAttribute("transform",`translate(${(-S.cam*S.f[i]+sx).toFixed(2)},${sy.toFixed(2)})`);
-  R.cat.setAttribute("transform",`translate(${cat.x.toFixed(1)},${cat.y.toFixed(1)})`);
-  R.flip.setAttribute("transform",`scale(${cat.face},1)`);
-  R.bob.setAttribute("transform",`translate(0,${cat.moving?Math.sin(cat.walk*2)*1.5:Math.sin(t*2)*.8}) rotate(${cat.ground?0:clamp(cat.vy*.02,-14,14)})`);
-  R.bob.setAttribute("opacity",cat.inv>0&&((t*24|0)%2)?.3:1);
-  R.legs.forEach((l,i)=>{const a=cat.moving?Math.sin(cat.walk+(i%2?Math.PI:0))*28:(cat.ground?0:(i<2?-30:30));
-    l.setAttribute("transform",`rotate(${a.toFixed(1)} ${+l.getAttribute("x")+3.5} -16)`)});
-  R.tail.setAttribute("transform",`rotate(${(Math.sin(t*2.2)*9).toFixed(1)} -26 -26)`);
-  R.shard.setAttribute("display",cat.weapon?"inline":"none");
-  R.slash.setAttribute("display",cat.atk>0?"inline":"none");
-  R.slash.setAttribute("fill",cat.weapon?"#f6f1e7":"#8d87a6");
-  drawBoss(t);
-}
-
-/* ================= início ================= */
-function start(){
-  clearTimers();S.seen={};cat.lives=9;drawLives();$("#end").hidden=true;$("#title").hidden=true;
-  $("#fade").style.opacity=0;buildRoom(false);S.frozen=false;
-  later(()=>say("","Três semanas. As cortinas nunca abrem."),700);
-}
-$("#startBtn").addEventListener("click",start);
-$("#againBtn").addEventListener("click",start);
-drawLives();buildRoom(false);S.mode="title";render(0);
-requestAnimationFrame(frame);
-})();
-</script>
-</body>
+        <!-- Cada arquivo tem uma responsabilidade. A ordem importa: quem é usado vem antes. -->
+        <script src="js/config.js"></script>
+        <script src="js/util.js"></script>
+        <script src="js/roteiro.js"></script>
+        <script src="js/agenda.js"></script>
+        <script src="js/paleta.js"></script>
+        <script src="js/sprites.js"></script>
+        <script src="js/fonte.js"></script>
+        <script src="js/tela.js"></script>
+        <script src="js/entrada.js"></script>
+        <script src="js/hud.js"></script>
+        <script src="js/particulas.js"></script>
+        <script src="js/gato.js"></script>
+        <script src="js/palavras.js"></script>
+        <script src="js/mascara.js"></script>
+        <script src="js/cenarios/quarto.js"></script>
+        <script src="js/cenarios/sonho.js"></script>
+        <script src="js/capitulos/vigilia.js"></script>
+        <script src="js/capitulos/memoria.js"></script>
+        <script src="js/jogo.js"></script>
+    </body>
 </html>
