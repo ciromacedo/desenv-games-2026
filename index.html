@@ -171,6 +171,61 @@
                 font-weight: bold;
             }
 
+            /* ---------- MINIATURA DA VIGÍLIA (parallax) ----------
+               Cada camada vai e volta na horizontal; quanto maior o --p,
+               mais perto do jogador ela parece. No hover a câmera acelera. */
+            .vigilia .camada {
+                animation: vig-camera 9s ease-in-out infinite alternate;
+            }
+
+            a.jogo:hover .vigilia .camada,
+            a.jogo:focus-visible .vigilia .camada {
+                animation-duration: 3s;
+            }
+
+            @keyframes vig-camera {
+                from { transform: translateX(calc(var(--p) * 1px)); }
+                to   { transform: translateX(calc(var(--p) * -1px)); }
+            }
+
+            .vig-pulsa {
+                animation: vig-pulsa 1.8s ease-in-out infinite;
+            }
+
+            @keyframes vig-pulsa {
+                50% { opacity: 0.35; }
+            }
+
+            .vig-ponteiro {
+                transform-box: fill-box;
+                transform-origin: 50% 100%;
+                animation: vig-volta 1.2s linear infinite;
+            }
+
+            @keyframes vig-volta {
+                to { transform: rotate(-360deg); }
+            }
+
+            .vig-fios {
+                stroke-dasharray: 14 18;
+                animation: vig-fios 1.2s linear infinite;
+            }
+
+            @keyframes vig-fios {
+                to { stroke-dashoffset: -64; }
+            }
+
+            .vig-palavra {
+                animation: vig-palavra 2.6s linear infinite;
+            }
+
+            @keyframes vig-palavra {
+                0%   { transform: translateX(16px); opacity: 0; }
+                20%  { opacity: 1; }
+                85%  { opacity: 1; }
+                100% { transform: translateX(-12px); opacity: 0; }
+            }
+
             /* ---------- CARD "EM BREVE" ---------- */
             .jogo.em-breve {
                 border-style: dashed;
@@ -218,6 +273,9 @@
                 }
                 a.jogo:hover {
                     transform: none;
+                }
+                .vigilia * {
+                    animation: none !important;
                 }
             }
 
@@ -481,7 +539,150 @@
                         </div>
                     </a>
                 </li>
-                
+
+                <!-- ===== JOGO: VIGÍLIA =====
+                     Miniatura em 4 camadas (céu, parede, cena, primeiro plano), como no jogo.
+                     Cada camada desliza numa amplitude diferente (--p) e isso cria o parallax. -->
+                <li>
+                    <a class="jogo" href="jogos/vigilia/">
+                        <svg class="miniatura vigilia" viewBox="0 0 160 100" aria-hidden="true" focusable="false">
+                            <defs>
+                                <linearGradient id="vigCeu" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0" stop-color="#0a0206"/>
+                                    <stop offset="1" stop-color="#4a0716"/>
+                                </linearGradient>
+                                <radialGradient id="vigBrilho" cx=".5" cy=".5" r=".5">
+                                    <stop offset="0" stop-color="#c2263d" stop-opacity=".55"/>
+                                    <stop offset="1" stop-color="#c2263d" stop-opacity="0"/>
+                                </radialGradient>
+                                <radialGradient id="vigVinheta" cx=".5" cy=".5" r=".75">
+                                    <stop offset=".55" stop-color="#000" stop-opacity="0"/>
+                                    <stop offset="1" stop-color="#000" stop-opacity=".85"/>
+                                </radialGradient>
+                            </defs>
+
+                            <!-- camada 1: céu, sol com fenda e morros (move pouco) -->
+                            <g class="camada" style="--p:1">
+                                <rect x="-20" width="200" height="82" fill="url(#vigCeu)"/>
+                                <circle class="vig-pulsa" cx="74" cy="44" r="24" fill="url(#vigBrilho)"/>
+                                <circle cx="74" cy="44" r="11" fill="#c2263d"/>
+                                <ellipse cx="74" cy="44" rx="2" ry="7.5" fill="#050305"/>
+                                <path d="M-20,82 L-20,68 Q8,58 36,66 Q66,56 96,65 Q128,57 152,66 Q168,61 180,64 L180,82Z" fill="#12060a"/>
+                            </g>
+
+                            <!-- camada 2: parede com a janela, cortinas, quadro torto e relógio -->
+                            <g class="camada" style="--p:2.5">
+                                <path fill-rule="evenodd" fill="#2a1420" d="M-20,0H180V82H-20Z M58,12V64H114V12Z"/>
+                                <rect x="-20" y="70" width="200" height="12" fill="#1c0c16"/>
+                                <rect x="-20" y="69" width="200" height="1" fill="#fff8ea" opacity=".15"/>
+                                <rect x="58" y="12" width="56" height="52" fill="none" stroke="#fff8ea" stroke-width="1.6" opacity=".35"/>
+                                <path d="M86,12V64M58,38H114" stroke="#fff8ea" stroke-width="1" opacity=".35"/>
+                                <path d="M52,8 H63 Q61,38 55,68 H52Z" fill="#5a0f1c"/>
+                                <path d="M120,8 H109 Q111,38 117,68 H120Z" fill="#5a0f1c"/>
+                                <g transform="rotate(-11 24 28)">
+                                    <rect x="14" y="28" width="20" height="24" fill="#0d0508"/>
+                                    <rect x="16" y="30" width="16" height="20" fill="#12060a"/>
+                                    <path d="M17,31 L31,49 M30,31 L18,47 M16,40 L32,41" stroke="#c2263d" stroke-width=".7"/>
+                                </g>
+                                <circle cx="140" cy="30" r="6.5" fill="#fff8ea" opacity=".75" stroke="#0d0508" stroke-width="1.2"/>
+                                <path class="vig-ponteiro" d="M140,30V25" stroke="#2a1d17" stroke-width="1" stroke-linecap="round"/>
+                                <path d="M140,30H143" stroke="#2a1d17" stroke-width="1" stroke-linecap="round"/>
+                            </g>
+
+                            <!-- camada 3: chão, a garota presa por fios, a Máscara e o gato com o caco -->
+                            <g class="camada" style="--p:5">
+                                <rect x="-20" y="82" width="200" height="18" fill="#190b11"/>
+                                <rect x="-20" y="82" width="200" height="1" fill="#0e0609"/>
+                                <path d="M4,82V100M28,82V100M52,82V100M76,82V100M100,82V100M124,82V100M148,82V100" stroke="#0e0609" stroke-width=".6"/>
+                                <ellipse cx="84" cy="91" rx="52" ry="5" fill="#5a0f1c" opacity=".55"/>
+
+                                <!-- garota (marionete) -->
+                                <g transform="translate(142,82) scale(.24)">
+                                    <g class="vig-fios" stroke="#c2263d" stroke-width="4" fill="none" opacity=".8">
+                                        <path d="M-14,-70 L-60,-440"/><path d="M0,-78 L4,-440"/><path d="M14,-70 L70,-440"/>
+                                        <path d="M-24,-40 L-130,-440"/>
+                                    </g>
+                                    <path d="M-30,0 Q-34,-44 -10,-58 Q14,-64 28,-40 Q34,-18 30,0Z" fill="#8a7430"/>
+                                    <path d="M-20,-86 Q-30,-40 -24,-10 L10,-30 Q20,-60 14,-86Z" fill="#2e1a12"/>
+                                    <circle cx="-2" cy="-70" r="15" fill="#b99680"/>
+                                    <path d="M-18,-74 Q-8,-92 10,-84 Q16,-76 13,-66 Q0,-80 -18,-74Z" fill="#2e1a12"/>
+                                </g>
+
+                                <!-- a Máscara -->
+                                <g transform="translate(110,82) scale(.24)">
+                                    <ellipse cx="0" cy="-4" rx="70" ry="10" fill="#000" opacity=".5"/>
+                                    <g stroke="#050305" stroke-width="11" fill="none" stroke-linecap="round">
+                                        <path d="M-34,-196 Q-78,-150 -84,-70 M-84,-70 l-10,22 M-84,-70 l0,26 M-84,-70 l10,22"/>
+                                        <path d="M34,-196 Q78,-150 84,-70 M84,-70 l-10,22 M84,-70 l0,26 M84,-70 l10,22"/>
+                                    </g>
+                                    <path d="M-52,0 L-38,-150 Q-42,-236 0,-246 Q42,-236 38,-150 L52,0 L34,-16 L17,0 L0,-16 L-17,0 L-34,-16Z" fill="#050305" stroke="#5a0f1c" stroke-width="3"/>
+                                    <ellipse cx="0" cy="-206" rx="23" ry="29" fill="#f4efe6"/>
+                                    <polygon points="6,-236 24,-222 22,-200 10,-214" fill="#050305"/>
+                                    <ellipse cx="-9" cy="-212" rx="6" ry="4" fill="#050305" transform="rotate(18 -9 -212)"/>
+                                    <ellipse cx="9" cy="-212" rx="6" ry="4" fill="#050305" transform="rotate(-18 9 -212)"/>
+                                    <circle class="vig-pulsa" cx="-9" cy="-212" r="3" fill="#ff2a4a"/>
+                                    <circle class="vig-pulsa" cx="9" cy="-212" r="3" fill="#ff2a4a"/>
+                                    <path d="M-14,-194 Q0,-180 14,-194" stroke="#050305" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+                                    <path d="M-20,-220 L-8,-204 L-14,-190 M0,-234 L-4,-216 L4,-202 M18,-196 L6,-188 L10,-178" stroke="#050305" stroke-width="2.4" fill="none"/>
+                                    <polygon points="-44,-226 -34,-240 -30,-222" fill="#f4efe6"/>
+                                    <polygon points="34,-250 44,-262 46,-244" fill="#f4efe6"/>
+                                </g>
+
+                                <!-- palavra lançada pela Máscara, voando até o gato -->
+                                <text class="vig-palavra" x="76" y="66" text-anchor="middle" font-family="'Cormorant Garamond', Georgia, serif" font-style="italic" font-weight="700" font-size="9" fill="#f4efe6" stroke="#c2263d" stroke-width=".9" paint-order="stroke">culpa</text>
+
+                                <!-- o gato, com o caco de porcelana e o golpe -->
+                                <g transform="translate(38,82) scale(.36)">
+                                    <path d="M-26,-26 C-48,-30 -54,-56 -40,-70" stroke="#07070c" stroke-width="7" fill="none" stroke-linecap="round"/>
+                                    <path d="M-26,-26 C-48,-30 -54,-56 -40,-70" stroke="#4a4a6a" stroke-width="1.5" fill="none" opacity=".6"/>
+                                    <rect x="-24" y="-16" width="7" height="16" rx="3" fill="#07070c"/>
+                                    <rect x="-14" y="-16" width="7" height="16" rx="3" fill="#0d0d15"/>
+                                    <rect x="10" y="-16" width="7" height="16" rx="3" fill="#0d0d15"/>
+                                    <rect x="19" y="-16" width="7" height="16" rx="3" fill="#07070c"/>
+                                    <ellipse cx="0" cy="-25" rx="31" ry="14" fill="#07070c" stroke="#4a4a6a" stroke-width="1.8"/>
+                                    <polygon points="15,-46 19,-62 27,-49" fill="#07070c" stroke="#4a4a6a" stroke-width="1.5"/>
+                                    <polygon points="28,-49 36,-62 39,-45" fill="#07070c" stroke="#4a4a6a" stroke-width="1.5"/>
+                                    <circle cx="27" cy="-37" r="14" fill="#07070c" stroke="#4a4a6a" stroke-width="1.8"/>
+                                    <ellipse cx="26" cy="-38" rx="3" ry="4" fill="#ffd84a"/>
+                                    <ellipse cx="36" cy="-38" rx="3" ry="4" fill="#ffd84a"/>
+                                    <rect x="25.3" y="-41.5" width="1.4" height="7" fill="#07070c"/>
+                                    <rect x="35.3" y="-41.5" width="1.4" height="7" fill="#07070c"/>
+                                    <polygon points="39,-30 66,-40 60,-30 46,-23" fill="#f6f1e7" stroke="#9fb4e8" stroke-width="1.5"/>
+                                    <path d="M34,-78 Q118,-40 40,4 Q92,-38 34,-78Z" fill="#f6f1e7" opacity=".75"/>
+                                </g>
+                            </g>
+
+                            <!-- camada 4: plantas em silhueta no primeiro plano (move mais) -->
+                            <g class="camada" style="--p:9" fill="#050305">
+                                <g transform="translate(-6,100) scale(.24)">
+                                    <path d="M-34,0 L-26,-70 H26 L34,0Z"/>
+                                    <path d="M0,-70 Q-70,-150 -96,-220 Q-40,-170 0,-70Z"/>
+                                    <path d="M0,-70 Q10,-190 -14,-270 Q44,-190 0,-70Z"/>
+                                    <path d="M0,-70 Q70,-140 110,-200 Q52,-176 0,-70Z"/>
+                                </g>
+                                <g transform="translate(172,100) scale(.26)">
+                                    <path d="M-34,0 L-26,-70 H26 L34,0Z"/>
+                                    <path d="M0,-70 Q-70,-150 -96,-228 Q-40,-170 0,-70Z"/>
+                                    <path d="M0,-70 Q10,-190 -14,-270 Q44,-190 0,-70Z"/>
+                                    <path d="M0,-70 Q-30,-120 -60,-124 Q-22,-104 0,-70Z"/>
+                                </g>
+                            </g>
+
+                            <rect width="160" height="100" fill="url(#vigVinheta)"/>
+                        </svg>
+
+                        <div class="jogo-corpo">
+                            <h3>Vigília</h3>
+                            <p>Você é o gato de uma garota que não sai do quarto. Entre no sonho dela, ache o objeto que não pertence à lembrança e quebre a máscara do pesadelo.</p>
+                            <ul class="etiquetas">
+                                <li>Aventura</li>
+                                <li>Teclado e toque</li>
+                                <li>Protótipo</li>
+                            </ul>
+                            <span class="jogar">Jogar</span>
+                        </div>
+                    </a>
+                </li>
 
                 <!-- ===== PRÓXIMO JOGO (reservado) =====
                      Para publicar um novo jogo:
